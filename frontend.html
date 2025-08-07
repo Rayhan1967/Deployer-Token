@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Deployer - Create Your Own Token</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 50px;
+        }
+        
+        .deploy-section, .tokens-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .section-title {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 1rem;
+        }
+        
+        input::placeholder {
+            color: #666;
+        }
+        
+        .deploy-btn, .connect-btn, .load-btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        
+        .deploy-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+        
+        .connect-btn {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+            color: white;
+        }
+        
+        .load-btn {
+            background: linear-gradient(45deg, #a8e6cf, #7fcdcd);
+            color: #333;
+        }
+        
+        .deploy-btn:hover, .connect-btn:hover, .load-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        
+        .deploy-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .status.success {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4caf50;
+        }
+        
+        .status.error {
+            background: rgba(244, 67, 54, 0.3);
+            border: 1px solid #f44336;
+        }
+        
+        .status.loading {
+            background: rgba(255, 193, 7, 0.3);
+            border: 1px solid #ffc107;
+        }
+        
+        .token-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .token-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .token-details {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        
+        .token-address {
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            word-break: break-all;
+        }
+        
+        .fee-info {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Token Deployer</h1>
+            <p class="subtitle">Create your own ERC-20 token in seconds!</p>
+        </header>
+        
+        <div class="main-content">
+            <!-- Deploy Section -->
+            <div class="deploy-section">
+                <h2 class="section-title">Deploy New Token</h2>
+                
+                <div id="wallet-status">
+                    <button class="connect-btn" onclick="connectWallet()">Connect MetaMask</button>
+                </div>
+                
+                <form id="token-form" style="display: none;">
+                    <div class="fee-info">
+                        <strong>⚡ Deployment Fee: 0.001 ETH</strong>
+                        <br><small>One-time fee to deploy your token</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tokenName">Token Name</label>
+                        <input type="text" id="tokenName" placeholder="My Awesome Token" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tokenSymbol">Token Symbol</label>
+                        <input type="text" id="tokenSymbol" placeholder="MAT" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="totalSupply">Total Supply</label>
+                        <input type="number" id="totalSupply" placeholder="1000000" required>
+                    </div>
+                    
+                    <button type="submit" class="deploy-btn" id="deployBtn">
+                        Deploy Token 🚀
+                    </button>
+                </form>
+                
+                <div id="deploy-status"></div>
+            </div>
+            
+            <!-- Tokens Section -->
+            <div class="tokens-section">
+                <h2 class="section-title">Deployed Tokens</h2>
+                
+                <button class="load-btn" onclick="loadTokens()">Load All Tokens</button>
+                
+                <div id="tokens-list">
+                    <p style="text-align: center; opacity: 0.7; margin-top: 30px;">
+                        Connect wallet and click "Load All Tokens" to see deployed tokens
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Contract ABI dan Address (Anda perlu update ini setelah deploy)
+        const CONTRACT_ADDRESS = "0xb27A31f1b0AF2946B7F582768f03239b1eC07c2c"; // UPDATE SETELAH DEPLOY CONTRACT
+        const CONTRACT_ABI = [
+            "function deployToken(string memory _name, string memory _symbol, uint256 _totalSupply) external payable returns (address)",
+            "function getTotalDeployedTokens() external view returns (uint256)",
+            "function getTokenInfo(uint256 _index) external view returns (address tokenAddress, string memory name, string memory symbol, uint256 totalSupply, address owner, uint256 deployedAt)",
+            "function deploymentFee() external view returns (uint256)",
+            "function getUserTokens(address _user) external view returns (address[] memory)",
+            "event TokenDeployed(address indexed tokenAddress, string name, string symbol, uint256 totalSupply, address indexed owner)"
+        ];
+        
+        let provider, signer, contract, userAccount;
+
+        // Connect ke MetaMask
+        async function connectWallet() {
+            try {
+                if (typeof window.ethereum !== 'undefined') {
+                    provider = new ethers.BrowserProvider(window.ethereum);
+                    await provider.send("eth_requestAccounts", []);
+                    signer = await provider.getSigner();
+                    userAccount = await signer.getAddress();
+                    
+                    // Update UI
+                    document.getElementById('wallet-status').innerHTML = `
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <strong>✅ Connected: ${userAccount.slice(0, 6)}...${userAccount.slice(-4)}</strong>
+                        </div>
+                    `;
+                    
+                    document.getElementById('token-form').style.display = 'block';
+                    
+                    // Initialize contract (jika address sudah di-set)
+                    if (CONTRACT_ADDRESS !== "0x...") {
+                        contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                    }
+                    
+                } else {
+                    alert('Please install MetaMask!');
+                }
+            } catch (error) {
+                console.error('Error connecting wallet:', error);
+                showStatus('Error connecting wallet', 'error');
+            }
+        }
+
+        // Deploy Token
+        document.getElementById('token-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!contract) {
+                showStatus('Please deploy the TokenDeployer contract first and update CONTRACT_ADDRESS', 'error');
+                return;
+            }
+            
+            const tokenName = document.getElementById('tokenName').value;
+            const tokenSymbol = document.getElementById('tokenSymbol').value;
+            const totalSupply = document.getElementById('totalSupply').value;
+            
+            try {
+                document.getElementById('deployBtn').disabled = true;
+                showStatus('Deploying token... Please confirm transaction in MetaMask', 'loading');
+                
+                // Call contract function
+                const tx = await contract.deployToken(tokenName, tokenSymbol, totalSupply, {
+                    value: ethers.parseEther("0.001") // Deployment fee
+                });
+                
+                showStatus('Transaction submitted! Waiting for confirmation...', 'loading');
+                
+                const receipt = await tx.wait();
+                
+                // Get token address from event logs
+                let tokenAddress = 'Unknown';
+                
+                try {
+                    // Method 1: Parse events with contract interface
+                    const iface = new ethers.Interface(CONTRACT_ABI);
+                    const parsedLogs = receipt.logs.map(log => {
+                        try {
+                            return iface.parseLog(log);
+                        } catch {
+                            return null;
+                        }
+                    }).filter(log => log !== null);
+                    
+                    const tokenDeployedEvent = parsedLogs.find(log => log.name === 'TokenDeployed');
+                    if (tokenDeployedEvent) {
+                        tokenAddress = tokenDeployedEvent.args[0];
+                    }
+                    
+                } catch (eventError) {
+                    console.log('Event parsing failed, extracting from receipt...');
+                    
+                    // Method 2: Extract from transaction receipt (fallback)
+                    if (receipt.logs && receipt.logs.length > 0) {
+                        // Token address usually in the last log or as contract creation
+                        const lastLog = receipt.logs[receipt.logs.length - 1];
+                        if (lastLog.address) {
+                            tokenAddress = lastLog.address;
+                        }
+                    }
+                }
+                
+                showStatus(`✅ Token deployed successfully!<br>Address: <span style="font-family: monospace; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 4px;">${tokenAddress}</span><br><small>Check the "Deployed Tokens" section!</small>`, 'success');
+                
+                // Reset form
+                document.getElementById('token-form').reset();
+                
+            } catch (error) {
+                console.error('Error deploying token:', error);
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('deployBtn').disabled = false;
+            }
+        });
+
+        // Load All Tokens
+        async function loadTokens() {
+            if (!contract) {
+                showStatus('Please connect wallet and ensure contract is deployed', 'error');
+                return;
+            }
+            
+            try {
+                const totalTokens = await contract.getTotalDeployedTokens();
+                const tokensList = document.getElementById('tokens-list');
+                
+                if (totalTokens == 0) {
+                    tokensList.innerHTML = '<p style="text-align: center; opacity: 0.7;">No tokens deployed yet</p>';
+                    return;
+                }
+                
+                let tokensHTML = '';
+                
+                for (let i = 0; i < totalTokens; i++) {
+                    const tokenInfo = await contract.getTokenInfo(i);
+                    const [address, name, symbol, supply, owner, deployedAt] = tokenInfo;
+                    
+                    tokensHTML += `
+                        <div class="token-card">
+                            <div class="token-name">${name} (${symbol})</div>
+                            <div class="token-details">Total Supply: ${supply.toString()}</div>
+                            <div class="token-details">Owner: ${owner.slice(0, 6)}...${owner.slice(-4)}</div>
+                            <div class="token-details">Deployed: ${new Date(Number(deployedAt) * 1000).toLocaleDateString()}</div>
+                            <div class="token-address">${address}</div>
+                        </div>
+                    `;
+                }
+                
+                tokensList.innerHTML = tokensHTML;
+                
+            } catch (error) {
+                console.error('Error loading tokens:', error);
+                document.getElementById('tokens-list').innerHTML = '<p style="color: #f44336;">Error loading tokens</p>';
+            }
+        }
+
+        // Show Status Message
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('deploy-status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = message;
+            
+            if (type === 'loading') {
+                statusDiv.innerHTML += '<div class="spinner"></div>';
+            }
+        }
+
+        // Auto-connect if previously connected
+        window.addEventListener('load', async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                if (accounts.length > 0) {
+                    connectWallet();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
